@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>New Complaint</title>
+</head>
+<body>
+  <h2>📨 Raise Complaint</h2>
+
+  <form method="POST" action="/complaints">
+    <input name="lockerId" placeholder="Locker ID" required /><br><br>
+    <input name="compartmentId" placeholder="Compartment ID" /><br><br>
+    <input name="parcelId" placeholder="Parcel ID" /><br><br>
+    <input name="kioskId" placeholder="Kiosk ID" /><br><br>
+
+    <select name="category">
+      <option value="locker_not_opening">Locker Not Opening</option>
+      <option value="parcel_stuck">Parcel Stuck</option>
+      <option value="payment_issue">Payment Issue</option>
+      <option value="other">Other</option>
+    </select><br><br>
+
+    <input name="title" placeholder="Short Title" required /><br><br>
+    <textarea name="description" placeholder="Describe the problem"></textarea><br><br>
+
+    <button type="submit">Submit</button>
+  </form>
+
+  <br>
+  <a href="/">⬅ Back to Dashboard</a>
+</body>
+</html>
