@@ -136,7 +136,7 @@ app.get("/", requireAgent,async (req, res) => {
 
   const complaints = await HelpRequest.find(filter).sort({ createdAt: -1 });
 
-  res.render("dashboard", { complaints });
+  res.render("dashboard", { complaints, agent: req.user });
 });
 
 // Show new complaint form
