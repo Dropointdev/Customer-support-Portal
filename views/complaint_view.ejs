@@ -23,13 +23,11 @@
       color: #1e293b;
     }
 
-    /* Sidebar */
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
       position: fixed;
-      left: 0;
-      top: 0;
+      left: 0; top: 0;
       background: white;
       border-right: 1px solid #e2e8f0;
       z-index: 1000;
@@ -44,20 +42,16 @@
       margin-bottom: 5px;
       transition: all 0.2s;
     }
-
     .nav-link:hover, .nav-link.active {
       background: #f1f5f9;
       color: var(--primary-accent);
     }
 
-    /* Topbar */
     .topbar {
       height: var(--topbar-height);
       position: fixed;
-      top: 0;
-      right: 0;
-      left: var(--sidebar-width);
-      background: rgba(255, 255, 255, 0.8);
+      top: 0; right: 0; left: var(--sidebar-width);
+      background: rgba(255,255,255,0.8);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid #e2e8f0;
       z-index: 999;
@@ -66,7 +60,6 @@
       padding: 0 2rem;
     }
 
-    /* Main Content */
     .main-content {
       margin-left: var(--sidebar-width);
       padding-top: calc(var(--topbar-height) + 2rem);
@@ -79,19 +72,9 @@
       background: white;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
 
-    /* Video Terminal Styling */
-    .video-container {
-      background: #0f172a;
-      border-radius: 12px;
-      overflow: hidden;
-      aspect-ratio: 16/9;
-      position: relative;
-    }
-
-    /* Badge & Status Pills */
     .badge-pill {
       padding: 6px 14px;
       border-radius: 8px;
@@ -99,9 +82,8 @@
       font-weight: 700;
       letter-spacing: 0.02em;
     }
-
-    .badge-high { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
-    .badge-open { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .badge-high     { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+    .badge-open     { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
     .badge-resolved { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
 
     .action-btn {
@@ -111,7 +93,6 @@
       font-size: 14px;
       transition: transform 0.1s;
     }
-
     .action-btn:active { transform: scale(0.98); }
 
     .timeline-item {
@@ -120,167 +101,347 @@
       position: relative;
       padding-bottom: 20px;
     }
-
     .timeline-item::after {
       content: '';
       position: absolute;
-      left: -7px;
-      top: 0;
-      width: 12px;
-      height: 12px;
+      left: -7px; top: 0;
+      width: 12px; height: 12px;
       background: var(--primary-accent);
       border-radius: 50%;
     }
+
+    /* ── Video section ──────────────────────────────────────────── */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .video-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .video-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .cam-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #374151;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .video-ts { font-size: 10px; color: #9ca3af; }
+
+    /* 16:9 iframe wrapper */
+    .video-wrap {
+      position: relative;
+      padding-top: 56.25%;
+      background: #0f172a;
+    }
+    .video-wrap iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    .video-placeholder {
+      aspect-ratio: 16/9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #0f172a;
+    }
+
+    .video-open-link {
+      display: block;
+      text-align: right;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: #4f46e5;
+      text-decoration: none;
+      border-top: 1px solid #f0f0f0;
+      font-weight: 500;
+    }
+    .video-open-link:hover { background: #f8fafc; color: #4338ca; }
+
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   </style>
 </head>
 <body>
 
-  <aside class="sidebar">
-    <div class="d-flex align-items-center mb-5 px-2">
-      <div class="bg-primary text-white rounded-3 p-2 me-2">
-        <i class="fa-solid fa-screwdriver-wrench"></i>
+<aside class="sidebar">
+  <div class="d-flex align-items-center mb-5 px-2">
+    <div class="bg-primary text-white rounded-3 p-2 me-2">
+      <i class="fa-solid fa-screwdriver-wrench"></i>
+    </div>
+    <h5 class="mb-0 fw-bold">Droppoint Support</h5>
+  </div>
+  <nav class="nav flex-column">
+    <a class="nav-link active" href="/"><i class="fa-solid fa-ticket me-2"></i> Complaints</a>
+  </nav>
+</aside>
+
+<header class="topbar justify-content-between">
+  <div class="fw-medium text-secondary">
+    <a href="/" class="text-decoration-none text-secondary">Complaints</a>
+    <span class="mx-2">/</span>
+    <span class="text-dark">Ticket Detail</span>
+  </div>
+  <div class="d-flex align-items-center">
+    <img src="https://ui-avatars.com/api/?name=User&background=4f46e5&color=fff"
+         class="rounded-circle" width="35"/>
+  </div>
+</header>
+
+<main class="main-content">
+  <div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <a href="/dashboard" class="text-primary text-decoration-none small fw-bold mb-2 d-inline-block">
+          <i class="fa fa-arrow-left me-1"></i> Back to Queue
+        </a>
+        <h2 class="fw-bold mb-1"><%= complaint.helpId %></h2>
+        <p class="text-secondary small mb-0">Opened on <%= complaint.createdAt.toLocaleString() %></p>
       </div>
-      <h5 class="mb-0 fw-bold">Droppoint Support </h5>
+      <div class="d-flex gap-2">
+        <span class="badge-pill badge-high">PRIORITY: HIGH</span>
+        <span class="badge-pill badge-open"><%= complaint.status.toUpperCase() %></span>
+      </div>
     </div>
 
-    <nav class="nav flex-column">
-    
-      <a class="nav-link active" href="/"><i class="fa-solid fa-ticket me-2"></i> Complaints</a>
-      
-    </nav>
-  </aside>
+    <div class="row g-4">
+      <!-- LEFT COLUMN -->
+      <div class="col-lg-8">
 
-  <header class="topbar justify-content-between">
-    <div class="fw-medium text-secondary">
-      <a href="/" class="text-decoration-none text-secondary">Complaints</a> 
-      <span class="mx-2">/</span> 
-      <span class="text-dark">Ticket Detail</span>
+        <!-- ── RECORDINGS ───────────────────────────────────────── -->
+        <div class="card border-0 mb-4 overflow-hidden" id="recordings">
+          <div class="card-header bg-white border-bottom pt-3 px-4 d-flex justify-content-between align-items-center">
+            <span class="fw-bold">
+              <i class="fa fa-video me-2 text-danger"></i>Transaction Recordings
+            </span>
+            <span id="video-badge" class="badge rounded-pill bg-secondary pulse">
+              ⏳ Loading...
+            </span>
+          </div>
+          <div class="p-3">
+            <div id="video-grid" class="video-grid">
+              <!-- skeleton -->
+              <div class="video-placeholder" style="border-radius:10px">
+                <i class="fa fa-video text-secondary" style="font-size:22px;opacity:.3"></i>
+                <span class="text-secondary small">Loading recordings...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── QUICK ACTIONS ────────────────────────────────────── -->
+        <div class="card border-0 mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3">⚡ Quick Actions</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <button class="btn btn-success w-100 action-btn">
+                  <i class="fa fa-unlock me-2"></i>Unlock Compartment
+                </button>
+              </div>
+              <div class="col-md-6">
+                <button class="btn btn-outline-danger w-100 action-btn">
+                  <i class="fa fa-triangle-exclamation me-2"></i>Escalate Issue
+                </button>
+              </div>
+              <div class="col-md-6">
+                <button class="btn btn-outline-secondary w-100 action-btn">
+                  <i class="fa fa-phone me-2"></i>Call Customer
+                </button>
+              </div>
+              <div class="col-md-6">
+                <form method="POST" action="/complaints/<%= complaint._id %>/status">
+                  <input type="hidden" name="status" value="resolved">
+                  <button class="btn btn-primary w-100 action-btn">
+                    <i class="fa fa-check-circle me-2"></i>Mark Resolved
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TIMELINE ─────────────────────────────────────────── -->
+        <div class="card border-0">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-4">🕒 Issue Timeline</h6>
+            <div class="timeline-item">
+              <div class="fw-bold small">Ticket Created</div>
+              <div class="text-secondary small"><%= complaint.createdAt.toLocaleString() %></div>
+            </div>
+            <% if (complaint.status !== "open") { %>
+            <div class="timeline-item border-0">
+              <div class="fw-bold small">Status Updated to <%= complaint.status %></div>
+              <div class="text-secondary small"><%= complaint.updatedAt.toLocaleString() %></div>
+            </div>
+            <% } %>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="col-lg-4">
+
+        <div class="card border-0 mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3"><i class="fa fa-user me-2 text-primary"></i>Customer</h6>
+            <div class="text-secondary small mb-1">User ID</div>
+            <div class="fw-bold mb-3"><%= complaint.userId || "Unknown User" %></div>
+            <button class="btn btn-outline-primary btn-sm w-100 rounded-pill">💬 Send SMS</button>
+          </div>
+        </div>
+
+        <div class="card border-0 mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3"><i class="fa fa-box me-2 text-primary"></i>Terminal Details</h6>
+            <div class="mb-3">
+              <div class="text-secondary small">Terminal ID</div>
+              <div class="fw-bold text-primary"><%= complaint.lockerId %></div>
+            </div>
+            <div class="mb-3">
+              <div class="text-secondary small">Compartment</div>
+              <div class="fw-bold"><%= complaint.compartmentId || "N/A" %></div>
+            </div>
+            <div>
+              <div class="text-secondary small">Issue Type</div>
+              <div class="fw-bold"><%= complaint.category.replace(/_/g," ") %></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3"><i class="fa fa-pen me-2 text-primary"></i>Internal Notes</h6>
+            <textarea class="form-control bg-light border-0 mb-3" rows="4"
+              placeholder="Type internal update..."
+              style="resize:none;font-size:14px"></textarea>
+            <button class="btn btn-primary w-100 action-btn">Save Notes</button>
+          </div>
+        </div>
+
+      </div>
     </div>
-    <div class="d-flex align-items-center">
-      <img src="https://ui-avatars.com/api/?name=User&background=4f46e5&color=fff" class="rounded-circle" width="35">
-    </div>
-  </header>
+  </div>
+</main>
 
-  <main class="main-content">
-    <div class="container-fluid">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const HELP_ID = "<%= complaint.helpId %>";
+  const grid    = document.getElementById("video-grid");
+  const badge   = document.getElementById("video-badge");
 
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <a href="/dashboard" class="text-primary text-decoration-none small fw-bold mb-2 d-inline-block">
-            <i class="fa fa-arrow-left me-1"></i> Back to Queue
+  // ── Render a single camera card ──────────────────────────────
+  function renderCard(video) {
+    const ts = video.uploadedAt
+      ? new Date(video.uploadedAt).toLocaleString()
+      : "";
+
+    if (video.status === "ready" && video.embedUrl) {
+      return `
+        <div class="video-card">
+          <div class="video-card-header">
+            <span class="cam-label">📷 ${video.cameraId}</span>
+            <span class="video-ts">${ts}</span>
+          </div>
+          <div class="video-wrap">
+            <iframe
+              src="${video.embedUrl}"
+              allow="autoplay"
+              allowfullscreen
+              loading="lazy">
+            </iframe>
+          </div>
+          <a href="${video.viewUrl}" target="_blank" class="video-open-link">
+            ↗ Open in Drive
           </a>
-          <h2 class="fw-bold mb-1"><%= complaint.helpId %></h2>
-          <p class="text-secondary small mb-0">Opened on <%= complaint.createdAt.toLocaleString() %></p>
+        </div>`;
+    }
+
+    return `
+      <div class="video-card">
+        <div class="video-card-header">
+          <span class="cam-label">📷 ${video.cameraId}</span>
         </div>
-        <div class="d-flex gap-2">
-          <span class="badge-pill badge-high">PRIORITY: HIGH</span>
-          <span class="badge-pill badge-open"><%= complaint.status.toUpperCase() %></span>
+        <div class="video-placeholder">
+          <i class="fa fa-spinner fa-spin text-secondary" style="font-size:20px;opacity:.5"></i>
+          <span class="text-secondary small mt-1">
+            ${video.status === "processing" ? "Processing upload..." : "Awaiting upload from locker..."}
+          </span>
         </div>
-      </div>
+      </div>`;
+  }
 
-      <div class="row g-4">
-        <div class="col-lg-8">
-          
-          <div class="card border-0 mb-4 overflow-hidden">
-            <div class="card-header bg-white border-bottom-0 pt-3 px-4 d-flex justify-content-between align-items-center">
-              <span class="fw-bold"><i class="fa fa-video me-2 text-danger"></i>Live Terminal Feed</span>
-              <span class="badge rounded-pill bg-danger">LIVE</span>
-            </div>
-            <div class="p-3">
-              <div class="video-container">
-                <video width="100%" height="100%" controls class="d-block">
-                  <source src="/placeholder-cctv.mp4" type="video/mp4">
-                </video>
-              </div>
-              <div class="d-flex justify-content-center gap-3 mt-3">
-                <button class="btn btn-sm btn-light border rounded-circle"><i class="fa fa-rotate"></i></button>
-                <button class="btn btn-sm btn-light border rounded-circle"><i class="fa fa-volume-high"></i></button>
-                <button class="btn btn-sm btn-light border rounded-circle"><i class="fa fa-expand"></i></button>
-              </div>
-            </div>
-          </div>
+  // ── Fetch videos from MongoDB via Express ─────────────────────
+  async function fetchVideos() {
+    try {
+      const res  = await fetch(`/api/videos/${HELP_ID}`);
+      const data = await res.json();
 
-          <div class="card border-0 mb-4">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-3">⚡ Quick Actions</h6>
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <button class="btn btn-success w-100 action-btn"><i class="fa fa-unlock me-2"></i>Unlock Compartment</button>
-                </div>
-                <div class="col-md-6">
-                  <button class="btn btn-outline-danger w-100 action-btn"><i class="fa fa-triangle-exclamation me-2"></i>Escalate Issue</button>
-                </div>
-                <div class="col-md-6">
-                  <button class="btn btn-outline-secondary w-100 action-btn"><i class="fa fa-phone me-2"></i>Call Customer</button>
-                </div>
-                <div class="col-md-6">
-                  <form method="POST" action="/complaints/<%= complaint._id %>/status">
-                    <input type="hidden" name="status" value="resolved">
-                    <button class="btn btn-primary w-100 action-btn"><i class="fa fa-check-circle me-2"></i>Mark Resolved</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
+      if (!data.success || !data.videos?.length) {
+        grid.innerHTML = `
+          <div class="video-placeholder" style="border-radius:10px;grid-column:1/-1">
+            <i class="fa fa-video-slash text-secondary" style="font-size:22px;opacity:.4"></i>
+            <span class="text-secondary small mt-1">No recordings found for this complaint.</span>
+          </div>`;
+        badge.textContent = "No recordings";
+        badge.className   = "badge rounded-pill bg-secondary";
+        return true;
+      }
 
-          <div class="card border-0">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-4">🕒 Issue Timeline</h6>
-              <div class="timeline-item">
-                <div class="fw-bold small">Ticket Created</div>
-                <div class="text-secondary smaller"><%= complaint.createdAt.toLocaleString() %></div>
-              </div>
-              <% if (complaint.status !== "open") { %>
-              <div class="timeline-item border-0">
-                <div class="fw-bold small">Status Updated to <%= complaint.status %></div>
-                <div class="text-secondary smaller"><%= complaint.updatedAt.toLocaleString() %></div>
-              </div>
-              <% } %>
-            </div>
-          </div>
-        </div>
+      const readyCount = data.videos.filter(v => v.status === "ready").length;
+      const allReady   = readyCount === data.videos.length;
 
-        <div class="col-lg-4">
-          
-          <div class="card border-0 mb-4">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-3"><i class="fa fa-user me-2 text-primary"></i>Customer</h6>
-              <div class="text-secondary small mb-1">User ID</div>
-              <div class="fw-bold mb-3"><%= complaint.userId || "Unknown User" %></div>
-              <button class="btn btn-outline-primary btn-sm w-100 rounded-pill">💬 Send SMS</button>
-            </div>
-          </div>
+      badge.textContent = allReady
+        ? `✅ ${readyCount} video${readyCount > 1 ? "s" : ""} ready`
+        : `⏳ ${readyCount} / ${data.videos.length} ready`;
+      badge.className = `badge rounded-pill ${allReady ? "bg-success" : "bg-secondary pulse"}`;
 
-          <div class="card border-0 mb-4">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-3"><i class="fa fa-box me-2 text-primary"></i>Terminal Details</h6>
-              <div class="mb-3">
-                <div class="text-secondary small">Terminal ID</div>
-                <div class="fw-bold text-primary"><%= complaint.lockerId %></div>
-              </div>
-              <div class="mb-3">
-                <div class="text-secondary small">Compartment</div>
-                <div class="fw-bold"><%= complaint.compartmentId || "N/A" %></div>
-              </div>
-              <div>
-                <div class="text-secondary small">Issue Type</div>
-                <div class="fw-bold"><%= complaint.category.replace(/_/g," ") %></div>
-              </div>
-            </div>
-          </div>
+      grid.innerHTML = data.videos.map(renderCard).join("");
+      return allReady;
 
-          <div class="card border-0">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-3"><i class="fa fa-pen me-2 text-primary"></i>Internal Notes</h6>
-              <textarea class="form-control bg-light border-0 mb-3" rows="4" placeholder="Type internal update..." style="resize: none; font-size: 14px;"></textarea>
-              <button class="btn btn-primary w-100 action-btn">Save Notes</button>
-            </div>
-          </div>
+    } catch (err) {
+      console.error("Video fetch failed:", err);
+      badge.textContent = "Error loading";
+      badge.className   = "badge rounded-pill bg-danger";
+      return true;
+    }
+  }
 
-        </div>
-      </div>
-    </div>
-  </main>
+  // ── Poll every 10s until all videos are ready ─────────────────
+  fetchVideos().then(allReady => {
+    if (!allReady) {
+      const poll = setInterval(async () => {
+        if (await fetchVideos()) clearInterval(poll);
+      }, 10000);
+    }
+  });
 
+  // ── If page opened with #recordings hash, scroll to it ────────
+  if (window.location.hash === "#recordings") {
+    document.getElementById("recordings")?.scrollIntoView({ behavior: "smooth" });
+  }
+</script>
 </body>
 </html>
