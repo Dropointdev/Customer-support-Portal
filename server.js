@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const path = require("path");
 const HelpRequest = require("./models/helpRequest");
 const customerAgent = require("./models/customerAgent");
+const AgentAccessRequest = require("./models/agentAccessRequest");
+const mailer = require("./config/mailer");
 const app = express();
 require("dotenv").config();
 
@@ -191,14 +193,12 @@ app.post("/complaints/:id/status", async (req, res) => {
 
 
 
-const AgentAccessRequest = require("./models/agentAccessRequest");
-
 // Show form
 app.get("/request-access", (req, res) => {
   res.render("request_access", { error: null, success: false });
 });
 
-// Submit form
+// Submit form → email approver
 app.post("/request-access", async (req, res) => {
   try {
     const { name, email, phone, reason } = req.body;
@@ -210,12 +210,7 @@ app.post("/request-access", async (req, res) => {
       });
     }
 
-    // Prevent duplicate requests
-    const existing = await AgentAccessRequest.findOne({
-      email,
-      status: "pending",
-    });
-
+    const existing = await AgentAccessRequest.findOne({ email, status: "pending" });
     if (existing) {
       return res.render("request_access", {
         error: "You already have a pending request",
@@ -223,23 +218,110 @@ app.post("/request-access", async (req, res) => {
       });
     }
 
-    await AgentAccessRequest.create({
-      name,
-      email,
-      phone,
-      reason,
+    const accessReq = await AgentAccessRequest.create({ name, email, phone, reason });
+
+    // Build approve/reject links
+    const base = process.env.APP_URL || "http://localhost:3000";
+    const approveUrl = `${base}/admin/approve/${accessReq._id}`;
+    const rejectUrl  = `${base}/admin/reject/${accessReq._id}`;
+
+    await mailer.sendMail({
+      from: `"DropPoint Support" <${process.env.EMAIL_USER}>`,
+      to: process.env.APPROVER_EMAIL,
+      subject: `New agent access request from ${name}`,
+      html: `
+        <h2>New Access Request</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone || "—"}</p>
+        <p><strong>Reason:</strong> ${reason || "—"}</p>
+        <br>
+        <a href="${approveUrl}" style="background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-right:12px;">✓ Approve</a>
+        <a href="${rejectUrl}"  style="background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✗ Reject</a>
+      `,
     });
 
-    res.render("request_access", {
-      error: null,
-      success: true,
-    });
+    res.render("request_access", { error: null, success: true });
   } catch (err) {
     console.error("Request access error:", err);
     res.render("request_access", {
       error: "Something went wrong. Please try again.",
       success: false,
     });
+  }
+});
+
+// Approver clicks Approve
+app.get("/admin/approve/:id", async (req, res) => {
+  try {
+    const accessReq = await AgentAccessRequest.findById(req.params.id);
+    if (!accessReq || accessReq.status !== "pending") {
+      return res.send("This request has already been processed.");
+    }
+
+    // Create the customerAgent so they can log in via Google
+    const existing = await customerAgent.findOne({ email: accessReq.email });
+    if (!existing) {
+      await customerAgent.create({
+        name: accessReq.name,
+        email: accessReq.email,
+        phone: accessReq.phone,
+        status: "offline",
+      });
+    }
+
+    await AgentAccessRequest.findByIdAndUpdate(req.params.id, { status: "approved" });
+
+    // Notify the agent
+    await mailer.sendMail({
+      from: `"DropPoint Support" <${process.env.EMAIL_USER}>`,
+      to: accessReq.email,
+      subject: "Your DropPoint access has been approved",
+      html: `
+        <h2>You're in!</h2>
+        <p>Hi ${accessReq.name}, your agent access has been approved.</p>
+        <p>You can now log in with your Google account at:</p>
+        <a href="${process.env.APP_URL || "http://localhost:3000"}/login">Log in to DropPoint</a>
+      `,
+    });
+
+    res.send(`
+      <h2 style="font-family:sans-serif">✓ Approved</h2>
+      <p style="font-family:sans-serif">${accessReq.name} (${accessReq.email}) has been added as an agent and notified.</p>
+    `);
+  } catch (err) {
+    console.error("Approval error:", err);
+    res.status(500).send("Something went wrong during approval.");
+  }
+});
+
+// Approver clicks Reject
+app.get("/admin/reject/:id", async (req, res) => {
+  try {
+    const accessReq = await AgentAccessRequest.findById(req.params.id);
+    if (!accessReq || accessReq.status !== "pending") {
+      return res.send("This request has already been processed.");
+    }
+
+    await AgentAccessRequest.findByIdAndUpdate(req.params.id, { status: "rejected" });
+
+    await mailer.sendMail({
+      from: `"DropPoint Support" <${process.env.EMAIL_USER}>`,
+      to: accessReq.email,
+      subject: "Your DropPoint access request was not approved",
+      html: `
+        <p>Hi ${accessReq.name}, unfortunately your access request was not approved at this time.</p>
+        <p>Please contact your administrator if you believe this is an error.</p>
+      `,
+    });
+
+    res.send(`
+      <h2 style="font-family:sans-serif">✗ Rejected</h2>
+      <p style="font-family:sans-serif">${accessReq.name} has been notified of the rejection.</p>
+    `);
+  } catch (err) {
+    console.error("Rejection error:", err);
+    res.status(500).send("Something went wrong during rejection.");
   }
 });
 
