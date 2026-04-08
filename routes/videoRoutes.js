@@ -31,28 +31,32 @@ const RecordingSession = mongoose.models.RecordingSession
 // Returns all camera videos for a complaint with their embed URLs and status
 router.get("/:helpId", async (req, res) => {
   try {
-    const sessions = await RecordingSession
-      .find({ sessionId: req.params.helpId })
-      .select("cameraId embedUrl viewUrl uploadedAt cloudUploaded status")
-      .lean();
-
-    if (!sessions.length) {
-      return res.json({ success: true, helpId: req.params.helpId, videos: [] });
-    }
+    const sessions = await RecordingSession.find({
+      sessionId: req.params.helpId   // ✅ matches your schema usage
+    })
+    .select("cameraId embedUrl viewUrl uploadedAt cloudUploaded status")
+    .lean();
 
     const videos = sessions.map(s => ({
-      cameraId:   s.cameraId,
-      embedUrl:   s.embedUrl   || null,
-      viewUrl:    s.viewUrl    || null,
+      cameraId: s.cameraId,
+      embedUrl: s.embedUrl || null,
+      viewUrl: s.viewUrl || null,
       uploadedAt: s.uploadedAt || null,
-      // ready = embedUrl exists, processing = uploaded but no embedUrl yet, pending = not uploaded
-      status: s.embedUrl ? "ready" : s.cloudUploaded ? "processing" : "pending"
+      status: s.embedUrl
+        ? "ready"
+        : s.cloudUploaded
+        ? "processing"
+        : "pending"
     }));
 
-    res.json({ success: true, helpId: req.params.helpId, videos });
+    res.json({
+      success: true,
+      helpId: req.params.helpId,
+      videos
+    });
 
   } catch (err) {
-    console.error("[VIDEO ROUTE]", err.message);
+    console.error("❌ VIDEO ROUTE ERROR:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
