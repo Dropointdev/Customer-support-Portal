@@ -4,7 +4,7 @@ const path = require("path");
 const HelpRequest = require("./models/helpRequest");
 const customerAgent = require("./models/customerAgent");
 const AgentAccessRequest = require("./models/agentAccessRequest");
-const RecordingSession = require("./models/RecordingSession"); 
+const RecordingSession = require("./models/RecordingSession");
 const mailer = require("./config/mailer");
 const app = express();
 require("dotenv").config();
@@ -14,14 +14,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/videos", require("./routes/videoRoutes"));
 
 // DB
 mongoose.connect(process.env.MONGO_URI).then(() => {
   console.log("✅ MongoDB connected");
-  console.log("DB:", mongoose.connection.name); // ✅ add this
+  console.log("DB:", mongoose.connection.name);
 });
+
 const session = require("express-session");
 const passport = require("passport");
 app.use(require("express-session")({
@@ -34,39 +35,29 @@ app.use(passport.initialize());
 app.use(passport.session());
 require("./config/passport");
 
-// Start Google login
-// Start Google login
+// ==============================
+// 🔐 AUTH
+// ==============================
+
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-// Callback
 app.get("/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login?error=not_onboarded",
-  }),
-  (req, res) => {
-    // Logged in successfully
-    res.redirect("/dashboard");
-  }
+  passport.authenticate("google", { failureRedirect: "/login?error=not_onboarded" }),
+  (req, res) => { res.redirect("/"); }
 );
- // adjust path if needed
 
 async function requireAgent(req, res, next) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.redirect("/login");
   }
-
   try {
-    // Update agent status to online + heartbeat
     await customerAgent.findByIdAndUpdate(req.user._id, {
       status: "online",
       lastSeenAt: new Date(),
     });
-
-    // Also update in req.user object (for UI)
     req.user.status = "online";
-
     next();
   } catch (err) {
     console.error("Failed to update agent status:", err);
@@ -89,15 +80,15 @@ app.get("/logout", async (req, res) => {
   } catch (err) {
     console.error("Failed to update agent status on logout:", err);
   }
-
-  req.logout(() => {
-    res.redirect("/login");
-  });
+  req.logout(() => { res.redirect("/login"); });
 });
-// Dashboard — shows all recording sessions
+
+// ==============================
+// 📋 DASHBOARD — recording sessions
+// ==============================
+
 app.get("/dashboard", requireAgent, async (req, res) => {
   const { q, lockerId } = req.query;
-
   let filter = {};
 
   if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
@@ -110,14 +101,11 @@ app.get("/dashboard", requireAgent, async (req, res) => {
   }
 
   const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
-
   res.render("dashboard", { sessions, agent: req.user });
 });
 
-// Home → Dashboard
 app.get("/", requireAgent, async (req, res) => {
   const { q, lockerId } = req.query;
-
   let filter = {};
 
   if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
@@ -130,11 +118,13 @@ app.get("/", requireAgent, async (req, res) => {
   }
 
   const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
-
   res.render("dashboard", { sessions, agent: req.user });
 });
 
-// View single session videos
+// ==============================
+// 🎥 SESSION DETAIL — view videos
+// ==============================
+
 app.get("/sessions/:sessionId", requireAgent, async (req, res) => {
   const sessions = await RecordingSession.find({
     sessionId: req.params.sessionId
@@ -144,97 +134,20 @@ app.get("/sessions/:sessionId", requireAgent, async (req, res) => {
 
   res.render("complaint_view", {
     sessionId: req.params.sessionId,
-    lockerId: sessions[0].lockerId,
+    lockerId:  sessions[0].lockerId,
     startedAt: sessions[0].startedAt,
     sessions
   });
 });
 
+// ==============================
+// 🔐 ACCESS REQUESTS
+// ==============================
 
-// Home → Dashboard
-app.get("/", requireAgent,async (req, res) => {
-  const { status, priority, q } = req.query;
-
-  let filter = {};
-
-  if (status) filter.status = status;
-  if (priority) filter.priority = priority;
-
-  if (q) {
-    filter.$or = [
-      { helpId: new RegExp(q, "i") },
-      { customerPhone: new RegExp(q, "i") },
-      { lockerId: new RegExp(q, "i") },
-      { compartmentId: new RegExp(q, "i") },    
-    ];
-  }
-
-  const complaints = await HelpRequest.find(filter).sort({ createdAt: -1 });
-
-  res.render("dashboard", { complaints, agent: req.user });
-});
-
-// Show new complaint form
-app.get("/complaints/new", (req, res) => {
-  res.render("new_complaint");
-});
-
-
-
-
-
-app.post("/complaints", async (req, res) => {
-  const {
-    lockerId,
-    compartmentId,
-    parcelId,
-    kioskId,
-    category,
-    title,
-    description,
-  } = req.body;
-
-  const helpId = "HR-" + Date.now();
-
-  await HelpRequest.create({
-    helpId,
-    lockerId,
-    compartmentId,
-    parcelId,
-    terminalId: kioskId,
-    category,
-    title,
-    description,
-  });
-  res.redirect("/");
-});
-
-
-// View single complaint
-app.get("/complaints/:id", async (req, res) => {
-  const complaint = await HelpRequest.findById(req.params.id);
-  res.render("complaint_view", { complaint });
-});
-
-// Update status
-app.post("/complaints/:id/status", async (req, res) => {
-  await HelpRequest.findByIdAndUpdate(req.params.id, {
-    status: req.body.status,
-  });
-  res.redirect("/complaints/" + req.params.id);
-});
-
-
-
-
-
-
-// Show form
 app.get("/request-access", (req, res) => {
   res.render("request_access", { error: null, success: false });
 });
 
-// Submit form → email approver
 app.post("/request-access", async (req, res) => {
   try {
     const { name, email, phone, reason } = req.body;
@@ -256,7 +169,6 @@ app.post("/request-access", async (req, res) => {
 
     const accessReq = await AgentAccessRequest.create({ name, email, phone, reason });
 
-    // Build approve/reject links
     const base = process.env.APP_URL || "http://localhost:3000";
     const approveUrl = `${base}/admin/approve/${accessReq._id}`;
     const rejectUrl  = `${base}/admin/reject/${accessReq._id}`;
@@ -287,7 +199,6 @@ app.post("/request-access", async (req, res) => {
   }
 });
 
-// Approver clicks Approve
 app.get("/admin/approve/:id", async (req, res) => {
   try {
     const accessReq = await AgentAccessRequest.findById(req.params.id);
@@ -295,7 +206,6 @@ app.get("/admin/approve/:id", async (req, res) => {
       return res.send("This request has already been processed.");
     }
 
-    // Create the customerAgent so they can log in via Google
     const existing = await customerAgent.findOne({ email: accessReq.email });
     if (!existing) {
       await customerAgent.create({
@@ -308,7 +218,6 @@ app.get("/admin/approve/:id", async (req, res) => {
 
     await AgentAccessRequest.findByIdAndUpdate(req.params.id, { status: "approved" });
 
-    // Notify the agent
     await mailer.sendMail({
       from: `"DropPoint Support" <${process.env.EMAIL_USER}>`,
       to: accessReq.email,
@@ -331,7 +240,6 @@ app.get("/admin/approve/:id", async (req, res) => {
   }
 });
 
-// Approver clicks Reject
 app.get("/admin/reject/:id", async (req, res) => {
   try {
     const accessReq = await AgentAccessRequest.findById(req.params.id);
@@ -361,9 +269,10 @@ app.get("/admin/reject/:id", async (req, res) => {
   }
 });
 
+// ==============================
+// 🚀 START
+// ==============================
 
-
-// Start server
 app.listen(3000, () => {
   console.log("🚀 Support system running at http://localhost:3000");
 });
