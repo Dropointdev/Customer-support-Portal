@@ -4,6 +4,7 @@ const path = require("path");
 const HelpRequest = require("./models/helpRequest");
 const customerAgent = require("./models/customerAgent");
 const AgentAccessRequest = require("./models/agentAccessRequest");
+const RecordingSession = require("./models/RecordingSession"); 
 const mailer = require("./config/mailer");
 const app = express();
 require("dotenv").config();
@@ -17,11 +18,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use("/api/videos", require("./routes/videoRoutes"));
 
 // DB
-mongoose.connect(process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI).then(() => {
+  console.log("✅ MongoDB connected");
+  console.log("DB:", mongoose.connection.name); // ✅ add this
+});
 const session = require("express-session");
 const passport = require("passport");
-
-
 app.use(require("express-session")({
   secret: "droppoint-secret",
   resave: false,
@@ -146,7 +148,10 @@ app.get("/complaints/new", (req, res) => {
   res.render("new_complaint");
 });
 
-// Create complaint
+
+
+
+
 app.post("/complaints", async (req, res) => {
   const {
     lockerId,
@@ -165,12 +170,11 @@ app.post("/complaints", async (req, res) => {
     lockerId,
     compartmentId,
     parcelId,
-    kioskId,
+    terminalId: kioskId,
     category,
     title,
     description,
   });
-
   res.redirect("/");
 });
 
