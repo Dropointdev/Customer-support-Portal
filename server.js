@@ -94,28 +94,59 @@ app.get("/logout", async (req, res) => {
     res.redirect("/login");
   });
 });
+// Dashboard — shows all recording sessions
 app.get("/dashboard", requireAgent, async (req, res) => {
-  const { status, priority, q } = req.query;
+  const { q, lockerId } = req.query;
 
   let filter = {};
 
-  if (status) filter.status = status;
-  if (priority) filter.priority = priority;
-
+  if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
   if (q) {
     filter.$or = [
-      { helpId: new RegExp(q, "i") },
-      { customerPhone: new RegExp(q, "i") },
-      { lockerId: new RegExp(q, "i") },
-      { compartmentId: new RegExp(q, "i") },
+      { sessionId: new RegExp(q, "i") },
+      { lockerId:  new RegExp(q, "i") },
+      { cameraId:  new RegExp(q, "i") },
     ];
   }
 
-  const complaints = await HelpRequest.find(filter).sort({ createdAt: -1 });
+  const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
 
-  res.render("dashboard", {
-    complaints,
-    agent: req.user,   // ✅ send logged-in agent to EJS
+  res.render("dashboard", { sessions, agent: req.user });
+});
+
+// Home → Dashboard
+app.get("/", requireAgent, async (req, res) => {
+  const { q, lockerId } = req.query;
+
+  let filter = {};
+
+  if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
+  if (q) {
+    filter.$or = [
+      { sessionId: new RegExp(q, "i") },
+      { lockerId:  new RegExp(q, "i") },
+      { cameraId:  new RegExp(q, "i") },
+    ];
+  }
+
+  const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
+
+  res.render("dashboard", { sessions, agent: req.user });
+});
+
+// View single session videos
+app.get("/sessions/:sessionId", requireAgent, async (req, res) => {
+  const sessions = await RecordingSession.find({
+    sessionId: req.params.sessionId
+  }).lean();
+
+  if (!sessions.length) return res.redirect("/");
+
+  res.render("complaint_view", {
+    sessionId: req.params.sessionId,
+    lockerId: sessions[0].lockerId,
+    startedAt: sessions[0].startedAt,
+    sessions
   });
 });
 
@@ -177,6 +208,7 @@ app.post("/complaints", async (req, res) => {
   });
   res.redirect("/");
 });
+
 
 // View single complaint
 app.get("/complaints/:id", async (req, res) => {
