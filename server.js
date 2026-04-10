@@ -100,7 +100,22 @@ app.get("/dashboard", requireAgent, async (req, res) => {
     ];
   }
 
-  const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
+  const all = await RecordingSession.find(filter).sort({ startedAt: -1 }).lean();
+
+  // ✅ Group by sessionId — one row per transaction
+  const seen = new Set();
+  const sessions = [];
+  for (const s of all) {
+    if (!seen.has(s.sessionId)) {
+      seen.add(s.sessionId);
+      // count how many cameras have video ready
+      const camsForSession = all.filter(x => x.sessionId === s.sessionId);
+      s.totalCams   = camsForSession.length;
+      s.readyCams   = camsForSession.filter(x => x.embedUrl).length;
+      sessions.push(s);
+    }
+  }
+
   res.render("dashboard", { sessions, agent: req.user });
 });
 
@@ -117,7 +132,22 @@ app.get("/", requireAgent, async (req, res) => {
     ];
   }
 
-  const sessions = await RecordingSession.find(filter).sort({ startedAt: -1 });
+  const all = await RecordingSession.find(filter).sort({ startedAt: -1 }).lean();
+
+  // ✅ Group by sessionId — one row per transaction
+  const seen = new Set();
+  const sessions = [];
+  for (const s of all) {
+    if (!seen.has(s.sessionId)) {
+      seen.add(s.sessionId);
+      // count how many cameras have video ready
+      const camsForSession = all.filter(x => x.sessionId === s.sessionId);
+      s.totalCams   = camsForSession.length;
+      s.readyCams   = camsForSession.filter(x => x.embedUrl).length;
+      sessions.push(s);
+    }
+  }
+
   res.render("dashboard", { sessions, agent: req.user });
 });
 

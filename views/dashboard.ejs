@@ -144,16 +144,16 @@
                   <%= s.startedAt ? new Date(s.startedAt).toLocaleString() : "—" %>
                 </td>
                 <td class="text-center">
-                  <% if (s.embedUrl) { %>
-                    <a href="/sessions/<%= s.sessionId %>" class="btn-video">
-                      <i class="fa fa-video"></i> View
-                    </a>
-                  <% } else { %>
-                    <span class="btn-video pending">
-                      <i class="fa fa-clock"></i> Pending
-                    </span>
-                  <% } %>
-                </td>
+  <% if (s.readyCams > 0) { %>
+    <a href="/sessions/<%= s.sessionId %>" class="btn-video">
+      <i class="fa fa-video"></i> <%= s.readyCams %>/<%= s.totalCams %> Ready
+    </a>
+  <% } else { %>
+    <span class="btn-video pending">
+      <i class="fa fa-clock"></i> Pending
+    </span>
+  <% } %>
+</td>
                 <td class="text-end pe-4">
                   <a href="/sessions/<%= s.sessionId %>" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                     View
