@@ -33,6 +33,7 @@
     .dropdown-item { transition: all 0.2s; border-radius: 6px; margin: 0 8px; width: calc(100% - 16px); }
     .dropdown-item:hover { background-color: #f1f5f9; color: var(--primary-accent); }
     .dropdown-item.text-danger:hover { background-color: #fff1f2; color: #e11d48; }
+    .cam-badges { display: flex; flex-wrap: wrap; gap: 4px; }
   </style>
 </head>
 <body>
@@ -127,13 +128,27 @@
             <% } %>
 
             <% sessions.forEach(s => { %>
+              <%
+                // Support both cameraIds (array) and cameraId (string) for backwards compatibility
+                const cams = s.cameraIds && s.cameraIds.length
+                  ? s.cameraIds
+                  : (s.cameraId ? [s.cameraId] : []);
+              %>
               <tr>
                 <td class="ps-4 fw-bold text-dark"><%= s.sessionId %></td>
                 <td class="fw-semibold"><%= s.lockerId || "—" %></td>
                 <td>
-                  <span class="badge bg-light text-dark border fw-medium px-2 py-1">
-                    <i class="fa fa-camera me-1"></i><%= s.cameraId || "—" %>
-                  </span>
+                  <% if (cams.length > 0) { %>
+                    <div class="cam-badges">
+                      <% cams.forEach(cam => { %>
+                        <span class="badge bg-light text-dark border fw-medium px-2 py-1">
+                          <i class="fa fa-camera me-1"></i><%= cam %>
+                        </span>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <span class="badge bg-light text-dark border fw-medium px-2 py-1">—</span>
+                  <% } %>
                 </td>
                 <td>
                   <span class="status-pill status-<%= s.status || 'unknown' %>">
@@ -144,16 +159,16 @@
                   <%= s.startedAt ? new Date(s.startedAt).toLocaleString() : "—" %>
                 </td>
                 <td class="text-center">
-  <% if (s.readyCams > 0) { %>
-    <a href="/sessions/<%= s.sessionId %>" class="btn-video">
-      <i class="fa fa-video"></i> <%= s.readyCams %>/<%= s.totalCams %> Ready
-    </a>
-  <% } else { %>
-    <span class="btn-video pending">
-      <i class="fa fa-clock"></i> Pending
-    </span>
-  <% } %>
-</td>
+                  <% if (s.readyCams > 0) { %>
+                    <a href="/sessions/<%= s.sessionId %>" class="btn-video">
+                      <i class="fa fa-video"></i> <%= s.readyCams %>/<%= s.totalCams %> Ready
+                    </a>
+                  <% } else { %>
+                    <span class="btn-video pending">
+                      <i class="fa fa-clock"></i> Pending
+                    </span>
+                  <% } %>
+                </td>
                 <td class="text-end pe-4">
                   <a href="/sessions/<%= s.sessionId %>" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                     View

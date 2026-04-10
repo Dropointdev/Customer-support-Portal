@@ -1,5 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
 const path = require("path");
 const HelpRequest = require("./models/helpRequest");
 const customerAgent = require("./models/customerAgent");
@@ -18,19 +20,19 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/videos", require("./routes/videoRoutes"));
 
 // DB
-mongoose.connect(process.env.MONGO_URI).then(() => {
-  console.log("✅ MongoDB connected");
-  console.log("DB:", mongoose.connection.name);
-});
+
 
 const session = require("express-session");
 const passport = require("passport");
-app.use(require("express-session")({
+app.use(session({
   secret: "droppoint-secret",
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    ttl: 14 * 24 * 60 * 60  // sessions expire after 14 days
+  })
 }));
-
 app.use(passport.initialize());
 app.use(passport.session());
 require("./config/passport");
