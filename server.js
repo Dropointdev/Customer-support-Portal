@@ -1,15 +1,18 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
-const MongoStore = require("connect-mongo").default;
+const MongoStore = require("connect-mongo");
 const path = require("path");
 const HelpRequest = require("./models/helpRequest");
 const customerAgent = require("./models/customerAgent");
 const AgentAccessRequest = require("./models/agentAccessRequest");
 const RecordingSession = require("./models/RecordingSession");
 const mailer = require("./config/mailer");
-const app = express();
+
+// ✅ Load env vars FIRST before anything else uses them
 require("dotenv").config();
+
+const app = express();
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -18,9 +21,11 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/videos", require("./routes/videoRoutes"));
+
 const passport = require("passport");
+
 app.use(session({
-  secret: "droppoint-secret",
+  secret: process.env.SESSION_SECRET || "droppoint-secret",
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
@@ -28,6 +33,7 @@ app.use(session({
     ttl: 14 * 24 * 60 * 60  // sessions expire after 14 days
   })
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 require("./config/passport");
@@ -81,11 +87,10 @@ app.get("/logout", async (req, res) => {
 });
 
 // ==============================
-// 📋 DASHBOARD — recording sessions
+// 📋 DASHBOARD — helper to build sessions list
 // ==============================
 
-app.get("/dashboard", requireAgent, async (req, res) => {
-  const { q, lockerId } = req.query;
+async function buildSessionsList(q, lockerId) {
   let filter = {};
 
   if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
@@ -99,53 +104,45 @@ app.get("/dashboard", requireAgent, async (req, res) => {
 
   const all = await RecordingSession.find(filter).sort({ startedAt: -1 }).lean();
 
-  // ✅ Group by sessionId — one row per transaction
+  // Group by sessionId — one row per transaction
   const seen = new Set();
   const sessions = [];
   for (const s of all) {
     if (!seen.has(s.sessionId)) {
       seen.add(s.sessionId);
-      // count how many cameras have video ready
       const camsForSession = all.filter(x => x.sessionId === s.sessionId);
-      s.totalCams   = camsForSession.length;
-      s.readyCams   = camsForSession.filter(x => x.embedUrl).length;
+      s.totalCams  = camsForSession.length;
+      s.readyCams  = camsForSession.filter(x => x.embedUrl).length;
+      // ✅ Collect all camera IDs for this session
+      s.cameraIds  = camsForSession.map(x => x.cameraId).filter(Boolean);
       sessions.push(s);
     }
   }
 
-  res.render("dashboard", { sessions, agent: req.user });
+  return sessions;
+}
+
+// ✅ /dashboard and / share the same logic via helper
+app.get("/dashboard", requireAgent, async (req, res) => {
+  try {
+    const { q, lockerId } = req.query;
+    const sessions = await buildSessionsList(q, lockerId);
+    res.render("dashboard", { sessions, agent: req.user, q: q || "", lockerId: lockerId || "" });
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    res.status(500).send("Something went wrong loading the dashboard.");
+  }
 });
 
 app.get("/", requireAgent, async (req, res) => {
-  const { q, lockerId } = req.query;
-  let filter = {};
-
-  if (lockerId) filter.lockerId = new RegExp(lockerId, "i");
-  if (q) {
-    filter.$or = [
-      { sessionId: new RegExp(q, "i") },
-      { lockerId:  new RegExp(q, "i") },
-      { cameraId:  new RegExp(q, "i") },
-    ];
+  try {
+    const { q, lockerId } = req.query;
+    const sessions = await buildSessionsList(q, lockerId);
+    res.render("dashboard", { sessions, agent: req.user, q: q || "", lockerId: lockerId || "" });
+  } catch (err) {
+    console.error("Index error:", err);
+    res.status(500).send("Something went wrong loading the dashboard.");
   }
-
-  const all = await RecordingSession.find(filter).sort({ startedAt: -1 }).lean();
-
-  // ✅ Group by sessionId — one row per transaction
-  const seen = new Set();
-  const sessions = [];
-  for (const s of all) {
-    if (!seen.has(s.sessionId)) {
-      seen.add(s.sessionId);
-      // count how many cameras have video ready
-      const camsForSession = all.filter(x => x.sessionId === s.sessionId);
-      s.totalCams   = camsForSession.length;
-      s.readyCams   = camsForSession.filter(x => x.embedUrl).length;
-      sessions.push(s);
-    }
-  }
-
-  res.render("dashboard", { sessions, agent: req.user });
 });
 
 // ==============================
@@ -153,18 +150,23 @@ app.get("/", requireAgent, async (req, res) => {
 // ==============================
 
 app.get("/sessions/:sessionId", requireAgent, async (req, res) => {
-  const sessions = await RecordingSession.find({
-    sessionId: req.params.sessionId
-  }).lean();
+  try {
+    const sessions = await RecordingSession.find({
+      sessionId: req.params.sessionId
+    }).lean();
 
-  if (!sessions.length) return res.redirect("/");
+    if (!sessions.length) return res.redirect("/");
 
-  res.render("complaint_view", {
-    sessionId: req.params.sessionId,
-    lockerId:  sessions[0].lockerId,
-    startedAt: sessions[0].startedAt,
-    sessions
-  });
+    res.render("complaint_view", {
+      sessionId: req.params.sessionId,
+      lockerId:  sessions[0].lockerId,
+      startedAt: sessions[0].startedAt,
+      sessions
+    });
+  } catch (err) {
+    console.error("Session detail error:", err);
+    res.status(500).send("Something went wrong loading the session.");
+  }
 });
 
 // ==============================
@@ -297,9 +299,17 @@ app.get("/admin/reject/:id", async (req, res) => {
 });
 
 // ==============================
-// 🚀 START
+// 🚀 START — connect to MongoDB FIRST, then listen
 // ==============================
 
-app.listen(3000, () => {
-  console.log("🚀 Support system running at http://localhost:3000");
-});
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    app.listen(process.env.PORT || 3000, () => {
+      console.log(`🚀 Support system running on port ${process.env.PORT || 3000}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err.message);
+    process.exit(1);
+  });
