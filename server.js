@@ -23,7 +23,7 @@ app.use(session({
   secret: "droppoint-secret",
   resave: false,
   saveUninitialized: false,
-  store: new MongoStore({
+  store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
     ttl: 14 * 24 * 60 * 60  // sessions expire after 14 days
   })
