@@ -1,20 +1,37 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
-const MongoStore = require("connect-mongo");
+const MongoDBStore = require("connect-mongodb-session")(session);
 const path = require("path");
-const HelpRequest = require("./models/helpRequest");
+const passport = require("passport");
+
 const customerAgent = require("./models/customerAgent");
 const AgentAccessRequest = require("./models/agentAccessRequest");
 const RecordingSession = require("./models/RecordingSession");
 const mailer = require("./config/mailer");
 
-// ✅ Load env vars FIRST before anything else uses them
-require("dotenv").config();
-
 const app = express();
 
-// Middleware
+// ==============================
+// 📦 SESSION STORE
+// ==============================
+
+const store = new MongoDBStore({
+  uri: process.env.MONGO_URI,
+  collection: "sessions",
+  expires: 14 * 24 * 60 * 60 * 1000,
+});
+
+store.on("error", (err) => {
+  console.error("❌ Session store error:", err);
+});
+
+// ==============================
+// ⚙️ MIDDLEWARE
+// ==============================
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.set("view engine", "ejs");
@@ -22,16 +39,14 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/videos", require("./routes/videoRoutes"));
 
-const passport = require("passport");
-
 app.use(session({
   secret: process.env.SESSION_SECRET || "droppoint-secret",
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    ttl: 14 * 24 * 60 * 60  // sessions expire after 14 days
-  })
+  store: store,
+  cookie: {
+    maxAge: 14 * 24 * 60 * 60 * 1000
+  }
 }));
 
 app.use(passport.initialize());
@@ -87,7 +102,7 @@ app.get("/logout", async (req, res) => {
 });
 
 // ==============================
-// 📋 DASHBOARD — helper to build sessions list
+// 📋 DASHBOARD HELPER
 // ==============================
 
 async function buildSessionsList(q, lockerId) {
@@ -104,17 +119,15 @@ async function buildSessionsList(q, lockerId) {
 
   const all = await RecordingSession.find(filter).sort({ startedAt: -1 }).lean();
 
-  // Group by sessionId — one row per transaction
   const seen = new Set();
   const sessions = [];
   for (const s of all) {
     if (!seen.has(s.sessionId)) {
       seen.add(s.sessionId);
       const camsForSession = all.filter(x => x.sessionId === s.sessionId);
-      s.totalCams  = camsForSession.length;
-      s.readyCams  = camsForSession.filter(x => x.embedUrl).length;
-      // ✅ Collect all camera IDs for this session
-      s.cameraIds  = camsForSession.map(x => x.cameraId).filter(Boolean);
+      s.totalCams = camsForSession.length;
+      s.readyCams = camsForSession.filter(x => x.embedUrl).length;
+      s.cameraIds = camsForSession.map(x => x.cameraId).filter(Boolean);
       sessions.push(s);
     }
   }
@@ -122,7 +135,6 @@ async function buildSessionsList(q, lockerId) {
   return sessions;
 }
 
-// ✅ /dashboard and / share the same logic via helper
 app.get("/dashboard", requireAgent, async (req, res) => {
   try {
     const { q, lockerId } = req.query;
@@ -146,7 +158,7 @@ app.get("/", requireAgent, async (req, res) => {
 });
 
 // ==============================
-// 🎥 SESSION DETAIL — view videos
+// 🎥 SESSION DETAIL
 // ==============================
 
 app.get("/sessions/:sessionId", requireAgent, async (req, res) => {
@@ -182,18 +194,12 @@ app.post("/request-access", async (req, res) => {
     const { name, email, phone, reason } = req.body;
 
     if (!name || !email) {
-      return res.render("request_access", {
-        error: "Name and email are required",
-        success: false,
-      });
+      return res.render("request_access", { error: "Name and email are required", success: false });
     }
 
     const existing = await AgentAccessRequest.findOne({ email, status: "pending" });
     if (existing) {
-      return res.render("request_access", {
-        error: "You already have a pending request",
-        success: false,
-      });
+      return res.render("request_access", { error: "You already have a pending request", success: false });
     }
 
     const accessReq = await AgentAccessRequest.create({ name, email, phone, reason });
@@ -221,10 +227,7 @@ app.post("/request-access", async (req, res) => {
     res.render("request_access", { error: null, success: true });
   } catch (err) {
     console.error("Request access error:", err);
-    res.render("request_access", {
-      error: "Something went wrong. Please try again.",
-      success: false,
-    });
+    res.render("request_access", { error: "Something went wrong. Please try again.", success: false });
   }
 });
 
@@ -259,10 +262,8 @@ app.get("/admin/approve/:id", async (req, res) => {
       `,
     });
 
-    res.send(`
-      <h2 style="font-family:sans-serif">✓ Approved</h2>
-      <p style="font-family:sans-serif">${accessReq.name} (${accessReq.email}) has been added as an agent and notified.</p>
-    `);
+    res.send(`<h2 style="font-family:sans-serif">✓ Approved</h2>
+      <p style="font-family:sans-serif">${accessReq.name} (${accessReq.email}) has been added as an agent and notified.</p>`);
   } catch (err) {
     console.error("Approval error:", err);
     res.status(500).send("Something went wrong during approval.");
@@ -288,10 +289,8 @@ app.get("/admin/reject/:id", async (req, res) => {
       `,
     });
 
-    res.send(`
-      <h2 style="font-family:sans-serif">✗ Rejected</h2>
-      <p style="font-family:sans-serif">${accessReq.name} has been notified of the rejection.</p>
-    `);
+    res.send(`<h2 style="font-family:sans-serif">✗ Rejected</h2>
+      <p style="font-family:sans-serif">${accessReq.name} has been notified of the rejection.</p>`);
   } catch (err) {
     console.error("Rejection error:", err);
     res.status(500).send("Something went wrong during rejection.");
@@ -299,7 +298,7 @@ app.get("/admin/reject/:id", async (req, res) => {
 });
 
 // ==============================
-// 🚀 START — connect to MongoDB FIRST, then listen
+// 🚀 START — connect DB first, then listen
 // ==============================
 
 mongoose.connect(process.env.MONGO_URI)
